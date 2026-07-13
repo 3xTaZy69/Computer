@@ -1,3 +1,9 @@
+/* 
+
+    July 13th, 2026
+
+*/
+
 module divider (
     input logic [31:0] a, b,
     output logic [31:0] result, rem,
