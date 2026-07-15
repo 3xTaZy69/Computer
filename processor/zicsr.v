@@ -13,7 +13,7 @@ module zicsr (
     input wire rst, clk, write,
     input wire [31:0] wdata,
     input wire [11:0] addr,
-    output wire [31:0] rdata
+    output reg [31:0] rdata
 );
     //         0x300    0x301  0x304 0x305  0x340     0x341  0x342   0x343  0x344
     reg [31:0] mstatus, misa,  mie,  mtvec, mscratch, mepc,  mcause, mtval, mip;
