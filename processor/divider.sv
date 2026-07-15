@@ -47,7 +47,6 @@ module divider (
         end
         case (state)
             IDLE: begin
-                done <= 1'b0;
                 if (start) begin
 
                     if (!b) begin
@@ -57,6 +56,7 @@ module divider (
                     end else if (divu && b[31]) begin
                         state <= DONE;
                     end else begin
+                        done <= 1'b0;
                         state <= RUN;
                     end
                 end

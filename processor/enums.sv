@@ -19,9 +19,6 @@ package enums;
         Csrrsi,
         Csrrci,
 
-        // M
-        Mul,
-
         // fence
         Fence,
 

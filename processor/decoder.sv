@@ -24,10 +24,7 @@ module decoder (
             end
             7'b0110011: begin
                 imm = 32'b0;
-                if (f7 == 7'b1)
-                    instr = Mul;
-                else
-                    instr = ArithR;
+                instr = ArithR;
             end
             7'b1100011: begin
                 instr = Branch;
