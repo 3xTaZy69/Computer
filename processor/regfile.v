@@ -7,7 +7,7 @@ module regfile (
     reg [31:0] registers [31:0];
 
     integer i;
-    always_ff @(clk) begin
+    always @(posedge clk) begin
         if (rst) begin
             for (i = 0; i < 32; i = i + 1) begin
                 registers[i] <= 32'b0;
