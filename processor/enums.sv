@@ -1,5 +1,5 @@
 package enums;
-    typedef enum logic [5:0] { 
+    typedef enum logic [5:0] {
         ArithI,
         ArithR,
         Branch,
@@ -9,9 +9,8 @@ package enums;
         Store,
         Jalr,
         Jal,
-        
+
         // zicsr
-        Csrr,
         Csrrw,
         Csrrs,
         Csrrc,

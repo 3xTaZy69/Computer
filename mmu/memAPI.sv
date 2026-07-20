@@ -10,10 +10,22 @@ module memAPI (
     input logic clk, write, load,
     input logic [2:0] f3,
     input logic [31:0] wdata, addr,
-    output logic [31:0] rdata 
+    output logic [31:0] rdata
 );
 
     logic [7:0] mem [4095:0];
+
+    initial begin
+        mem[0] <= 8'h13;
+        mem[1] <= 0;
+        mem[2] <= 0;
+        mem[3] <= 0;
+
+        mem[4] <= 8'h13;
+        mem[5] <= 0;
+        mem[6] <= 8'h08;
+        mem[7] <= 0;
+    end
 
     always_ff @(posedge clk) begin
         if (write) begin
@@ -32,7 +44,7 @@ module memAPI (
                     mem[addr+3] <= wdata[31:24];
                 end
             endcase
-        end 
+        end
 
         if (load) begin
             case (f3)

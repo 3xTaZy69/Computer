@@ -23,8 +23,8 @@ module decoder (
                 imm = {{20{data[31]}}, data[31:20]};
             end
             7'b0110011: begin
-                imm = 32'b0;
                 instr = ArithR;
+                imm = 32'b0;
             end
             7'b1100011: begin
                 instr = Branch;

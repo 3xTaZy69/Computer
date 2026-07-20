@@ -15,7 +15,7 @@ module zicsr (
     input wire [31:0] wdata,
     input wire [11:0] addr,
     output reg [31:0] rdata,
-    output wire [31:0] mtvecv
+    output wire [31:0] mtvecv, mepcv
 );
     //         0x300    0x301  0x304 0x305  0x340     0x341  0x342   0x343  0x344
     reg [31:0] mstatus, misa,  mie,  mtvec, mscratch, mepc,  mcause, mtval, mip;
@@ -40,12 +40,11 @@ module zicsr (
     end
 
 // register reading
-always @(posedge clk) begin
+always @(*) begin
 
-    // reading registers if not writing
     case (addr)
 
-        12'h300: rdata = mstatus;
+        2'h300: rdata = mstatus;
         12'h301: rdata = misa;
         12'h304: rdata = mie;
         12'h305: rdata = mtvec;
@@ -86,5 +85,6 @@ end
 
     // additional mtvec reading output for faster interrupts
     assign mtvecv = mtvec;
+    assign mepcv = mepcv;
 
 endmodule

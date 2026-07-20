@@ -15,7 +15,7 @@ import enums::*;
 
 
 module control_unit (
-    input logic clk, rst
+    input logic clk, rst, mtip
 );
 
     // decoder module
@@ -64,7 +64,7 @@ module control_unit (
 
     // zicsr module
     logic _zicsr_write, _zicsr_clk, _zicsr_rst;
-    logic [31:0] _zicsr_wdata, _zicsr_rdata, _zicsr_mtvecv;
+    logic [31:0] _zicsr_wdata, _zicsr_rdata, _zicsr_mtvecv, _zicsr_mepcv;
     logic [11:0] _zicsr_addr;
     // configurable clk and rst for zicsr module
     assign _zicsr_clk = clk;
@@ -77,7 +77,8 @@ module control_unit (
         .wdata(_zicsr_wdata),
         .addr(_zicsr_addr),
         .rdata(_zicsr_rdata),
-        .mtvecv(_zicsr_mtvecv)
+        .mtvecv(_zicsr_mtvecv),
+        .mepcv(_zicsr_mepcv)
     );
 
 
@@ -131,9 +132,6 @@ module control_unit (
 
     // pipeline and utilites
 
-    logic [31:0] pc;
-    initial pc = 32'b0;
-
     logic do_branch;
     initial do_branch = 0;
 
@@ -159,14 +157,114 @@ module control_unit (
     cfsm state;
     logic stall;
 
+    logic [31:0] pc, pc_next;
+    // optimization
+    logic [31:0] p4;
+    assign p4 = pc + 4;
+
+    logic do_rwrite;
+
+    assign _regfile_rs1 = _decoder_rs1;
+    assign _regfile_rs2 = _decoder_rs2;
+
+    logic msip;
+
     // test FSM
     always_ff @(posedge clk) begin
         if ( rst ) begin
             state <= IF;
             stall <= 0;
+            _decoder_data <= 0;
+            pc <= 0;
+            pc_next <= 0;
+            do_branch <= 0;
+            do_rwrite <= 0;
+
+            // load instruction
+            _mem_load <= 1;
+            _mem_f3 <= 3'b010;
+            _mem_addr <= 0;
         end else if ( !stall ) begin
             case (state)
+                IF: begin
+                    state <= ID;
 
+                    pc <= pc_next;
+
+                    // help for IF to get its instruction
+                    _mem_load <= 1;
+                    // pc_next because pc will only be updated after IF
+                    _mem_addr <= pc_next;
+                    _mem_f3 <= 3'b010;
+
+                end
+                ID: begin
+                    state <= EX;
+
+                    _decoder_data <= _mem_rdata;
+                    _mem_load <= 0;
+                end
+                EX: begin
+                    state <= MEM;
+
+                    case ( _decoder_instr )
+                        ArithI: begin
+                            _alu_a <= _regfile_rdata1;
+                            _alu_b <= _decoder_imm;
+                        end
+                        ArithR, Branch: begin
+                            _alu_a <= _regfile_rdata1;
+                            _alu_b <= _regfile_rdata2;
+                        end
+                        Auipc, Load, Store, Jal, Jalr: begin
+                            _alu_a <= pc;
+                            _alu_b <= _decoder_imm;
+                        end
+                        Lui: begin
+                            _alu_a <= 0;
+                            // _alu_result is _alu_b
+                            _alu_b <= _decoder_imm;
+                        end
+                        // zim - rs1
+                        Csrrw, Csrrs, Csrrc, Csrrwi, Csrrsi, Csrrci: begin
+                            _alu_a <= 0;
+                            _alu_b <= 0;
+                            _zicsr_addr <= _decoder_imm[11:0];
+                        end
+                        Fence: begin
+                            _alu_a <= 0;
+                            _alu_b <= 0;
+                        end
+                        Ecall, Ebreak: begin
+                            _alu_a <= 0;
+                            _alu_b <= 0;
+                        end
+                        Mret: begin
+                            _alu_a <= 0;
+                            _alu_b <= 0;
+                        end
+                        Wfi: begin
+                            _alu_a <= 0;
+                            _alu_b <= 0;
+                        end
+                    endcase
+
+                end
+                MEM:begin
+                    state <= WB;
+
+
+                end
+                WB: begin
+                    state <= IF;
+
+                    case ( _decoder_instr )
+                        Branch: pc_next <= do_branch ? pc + _decoder_imm : p4;
+                        Jal, Jalr: pc_next <= _alu_result;
+                        Mret: pc_next <= _zicsr_mepcv;
+                        default: pc_next <= p4;
+                    endcase
+                end
             endcase
         end
     end
