@@ -26,6 +26,7 @@ module zicsr (
         if (rst) begin
 
             mstatus <= 32'b0;
+            // Riscv32IM
             misa <= 32'h40001100;
             mie <= 32'b0;
             mtvec <= 32'b0;
