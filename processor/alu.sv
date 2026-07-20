@@ -1,4 +1,4 @@
-/* 
+/*
 
     July 13th, 2026 -- July 15th, 2026
 
@@ -14,7 +14,7 @@ module alu (
     input instr_t instr,
     output logic [31:0] result,
     output logic neg, zero, over, carry, stall, divbyzero
-);  
+);
 
     logic [32:0] sres;
     assign sres = {1'b0, a} - {1'b0, b};
@@ -115,14 +115,14 @@ module alu (
                     end
                 endcase
             end
-        ArithI: begin 
+        ArithI: begin
             case (f3)
                 3'b000: result = a + b; // addi
                 3'b001: result = a << b[4:0]; // slli
                 3'b010: result = $signed(a) < $signed(b); // slti
                 3'b011: result = $unsigned(a) < $unsigned(b); // sltiu
                 3'b100: result = a ^ b; // xori
-                3'b101: begin 
+                3'b101: begin
                     if (b[11:5] == 7'b0)
                         result = a >> b[4:0]; // srli
                     else

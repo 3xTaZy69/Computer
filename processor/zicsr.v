@@ -1,4 +1,4 @@
-/* 
+/*
 
     zicsr.v
     July 15th, 2026 -- July 20th, 2026
@@ -45,7 +45,7 @@ always @(posedge clk) begin
     // reading registers if not writing
     case (addr)
 
-        2'h300: rdata = mstatus;
+        12'h300: rdata = mstatus;
         12'h301: rdata = misa;
         12'h304: rdata = mie;
         12'h305: rdata = mtvec;

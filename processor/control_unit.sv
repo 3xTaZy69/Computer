@@ -1,11 +1,13 @@
-/* 
-    
+
+/*
+
     control_unit.sv
     July 16th, 2026 - July 20th, 2026
 
     memory access: Von Neumanns architecture
 
-    pipeline stages: IF - ID - EX - LW - WB
+    pipeline stages: IF - ID - EX - MEM - WB
+
 
 */
 
@@ -22,6 +24,8 @@ module control_unit (
     logic [2:0] _decoder_f3;
     logic [6:0] _decoder_f7, _decoder_opcode;
     instr_t _decoder_instr;
+
+
 
     decoder _decoder (
         .data(_decoder_data),
@@ -41,7 +45,7 @@ module control_unit (
     logic _regfile_write, _regfile_clk, _regfile_rst;
     // configurable fork of standard clock for regfile
     assign _regfile_clk = clk;
-    // reset is also configurable for register file
+    // reset is also configurable for register filer
     assign _regfile_rst = rst;
     logic [4:0] _regfile_rs1, _regfile_rs2, _regfile_rd;
 
@@ -109,7 +113,7 @@ module control_unit (
 
     // memory module(simulation only for now)
     logic _mem_clk, _mem_write, _mem_load;
-    logic [2:0], _mem_f3;
+    logic [2:0] _mem_f3;
     logic [31:0] _mem_wdata, _mem_addr, _mem_rdata;
     // configurable clk(no rst)
     assign _mem_clk = clk;
@@ -122,11 +126,50 @@ module control_unit (
         .wdata(_mem_wdata),
         .addr(_mem_addr),
         .rdata(_mem_rdata)
-    )
+    );
 
 
     // pipeline and utilites
 
-    
+    logic [31:0] pc;
+    initial pc = 32'b0;
+
+    logic do_branch;
+    initial do_branch = 0;
+
+    always_comb begin
+        case (_alu_f3)
+            // beq
+            3'b000: do_branch = _alu_zero;
+            // bne
+            3'b001: do_branch = ~_alu_zero;
+            // blt
+            3'b100: do_branch = _alu_neg ^ _alu_over;
+            // bge
+            3'b101: do_branch = _alu_neg & _alu_over;
+            // bltu
+            3'b110: do_branch = ~_alu_carry;
+            // bgeu
+            3'b111: do_branch = _alu_carry;
+        endcase
+    end
+
+    typedef enum logic [2:0] { IF, ID, EX, MEM, WB } cfsm;
+
+    cfsm state;
+    logic stall;
+
+    // test FSM
+    always_ff @(posedge clk) begin
+        if ( rst ) begin
+            state <= IF;
+            stall <= 0;
+        end else if ( !stall ) begin
+            case (state)
+
+            endcase
+        end
+    end
+
 
 endmodule

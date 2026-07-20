@@ -71,13 +71,13 @@ module decoder (
                                 instr = None;
                         endcase
                     3'b001:
-                        instr = Csrrw;                    
+                        instr = Csrrw;
                     3'b010:
-                        instr = Csrrs;                    
+                        instr = Csrrs;
                     3'b011:
-                        instr = Csrrc;                    
+                        instr = Csrrc;
                     3'b101:
-                        instr = Csrrwi;        
+                        instr = Csrrwi;
                     3'b110:
                         instr = Csrrsi;
                     3'b111:
@@ -96,5 +96,5 @@ module decoder (
             end
         endcase
     end
-    
+
 endmodule
