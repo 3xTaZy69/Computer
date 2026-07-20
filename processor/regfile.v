@@ -17,6 +17,6 @@ module regfile (
         end
     end
 
-    assign rdata1 = (rs1 == 0) ? 0 : registers[rs1];
-    assign rdata2 = (rs2 == 0) ? 0 : registers[rs2];
+    assign rdata1 = (rs1 == 0) ? 0 : (rs1 == rd) ? wdata : registers[rs1];
+    assign rdata2 = (rs2 == 0) ? 0 : (rs1 == rd) ? wdata : registers[rs2];
 endmodule
