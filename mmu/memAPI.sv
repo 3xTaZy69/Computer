@@ -16,15 +16,7 @@ module memAPI (
     logic [7:0] mem [4095:0];
 
     initial begin
-        mem[0] <= 8'h13;
-        mem[1] <= 0;
-        mem[2] <= 0;
-        mem[3] <= 0;
-
-        mem[4] <= 8'h13;
-        mem[5] <= 0;
-        mem[6] <= 8'h08;
-        mem[7] <= 0;
+        $readmemh("software.hex", mem);
     end
 
     always_ff @(posedge clk) begin
