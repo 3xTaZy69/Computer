@@ -6,8 +6,6 @@
     register file for zicsr extension.
     no instruction processing!
 
-    WAR (Write After Read)
-
 */
 
 module zicsr (
@@ -39,29 +37,29 @@ module zicsr (
         end
     end
 
-// register reading
-always @(*) begin
+    // register reading
+    always @(*) begin
 
-    case (addr)
+        case (addr)
 
-        2'h300: rdata = mstatus;
-        12'h301: rdata = misa;
-        12'h304: rdata = mie;
-        12'h305: rdata = mtvec;
-        12'h340: rdata = mscratch;
-        12'h341: rdata = mepc;
-        12'h342: rdata = mcause;
-        12'h343: rdata = mtval;
-        12'h344: rdata = mip;
-        default: rdata = 32'b0;
+            2'h300: rdata = mstatus;
+            12'h301: rdata = misa;
+            12'h304: rdata = mie;
+            12'h305: rdata = mtvec;
+            12'h340: rdata = mscratch;
+            12'h341: rdata = mepc;
+            12'h342: rdata = mcause;
+            12'h343: rdata = mtval;
+            12'h344: rdata = mip;
+            default: rdata = 32'b0;
 
-    endcase
+        endcase
 
-end
+    end
 
     // register write(using the same address)
     always @(negedge clk) begin
-        if (!rst && write) begin
+        if (!rst && write && wdata != 0) begin
 
             // little copypaste from reset
             case (addr)

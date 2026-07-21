@@ -166,8 +166,12 @@ module control_unit (
 
     assign _regfile_rs1 = _decoder_rs1;
     assign _regfile_rs2 = _decoder_rs2;
+    assign _regfile_rd = _decoder_rd;
 
     logic msip;
+
+    assign _alu_f3 = _decoder_f3;
+    assign _alU_f7 = _decoder_f7;
 
     // test FSM
     always_ff @(posedge clk) begin
@@ -184,6 +188,8 @@ module control_unit (
             _mem_load <= 1;
             _mem_f3 <= 3'b010;
             _mem_addr <= 0;
+
+            _zicsr_write <= 0;
         end else if ( !stall ) begin
             case (state)
                 IF: begin
@@ -196,6 +202,9 @@ module control_unit (
                     // pc_next because pc will only be updated after IF
                     _mem_addr <= pc_next;
                     _mem_f3 <= 3'b010;
+
+                    _regfile_write <= 0;
+                    _mem_write <= 0;
 
                 end
                 ID: begin
@@ -211,41 +220,60 @@ module control_unit (
                         ArithI: begin
                             _alu_a <= _regfile_rdata1;
                             _alu_b <= _decoder_imm;
+                            do_rwrite <= 1;
                         end
-                        ArithR, Branch: begin
+                        ArithR: begin
+                            _alu_a <= _regfile_rdata1;
+                            _alu_b <= _regfile_rdata2;
+                            do_rwrite <= 1;
+                        end
+                        Branch: begin
+                            do_rwrite <= 0;
                             _alu_a <= _regfile_rdata1;
                             _alu_b <= _regfile_rdata2;
                         end
-                        Auipc, Load, Store, Jal, Jalr: begin
+                        Auipc, Load, Jal, Jalr: begin
                             _alu_a <= pc;
                             _alu_b <= _decoder_imm;
+                            do_rwrite <= 1;
+                        end
+                        Store: begin
+                            _alu_a <= pc;
+                            _alu_b <= _decoder_imm;
+                            do_rwrite <= 0;
                         end
                         Lui: begin
                             _alu_a <= 0;
                             // _alu_result is _alu_b
                             _alu_b <= _decoder_imm;
+                            do_rwrite <= 1;
                         end
                         // zim - rs1
                         Csrrw, Csrrs, Csrrc, Csrrwi, Csrrsi, Csrrci: begin
                             _alu_a <= 0;
                             _alu_b <= 0;
                             _zicsr_addr <= _decoder_imm[11:0];
+                            do_rwrite <= 1;
                         end
                         Fence: begin
                             _alu_a <= 0;
                             _alu_b <= 0;
+                            do_rwrite <= 0;
                         end
                         Ecall, Ebreak: begin
                             _alu_a <= 0;
                             _alu_b <= 0;
+                            do_rwrite <= 0;
                         end
                         Mret: begin
                             _alu_a <= 0;
                             _alu_b <= 0;
+                            do_rwrite <= 0;
                         end
                         Wfi: begin
                             _alu_a <= 0;
                             _alu_b <= 0;
+                            do_rwrite <= 0;
                         end
                     endcase
 
@@ -253,6 +281,15 @@ module control_unit (
                 MEM:begin
                     state <= WB;
 
+                    if (_decoder_instr == Load) begin
+                        _mem_addr <= _alu_result;
+                        _mem_f3 <= _decoder_f3;
+                        _mem_load <= 1;
+                    end else if (_decoder_instr == Store) begin
+                        _mem_addr <= _alu_result;
+                        _mem_f3 <= _decoder_f3;
+                        _mem_write <= 1;
+                    end
 
                 end
                 WB: begin
@@ -263,6 +300,47 @@ module control_unit (
                         Jal, Jalr: pc_next <= _alu_result;
                         Mret: pc_next <= _zicsr_mepcv;
                         default: pc_next <= p4;
+                    endcase
+
+                    _regfile_write <= do_rwrite;
+
+                    case ( _decoder_instr )
+                        Load: begin
+                            _regfile_wdata <= _mem_rdata;
+                        end
+                        ArithR, ArithI, Lui, Auipc: begin
+                            _regfile_wdata <= _alu_result;
+                        end
+                        Csrrw: begin
+                            _regfile_wdata <= _zicsr_rdata;
+                            _zicsr_wdata <= _regfile_rdata1;
+                            _zicsr_write <= 1;
+                        end
+                        Csrrwi: begin
+                             _regfile_wdata <= _zicsr_rdata;
+                             _zicsr_wdata <= {27'b0, _decoder_rs1};
+                             _zicsr_write <= 1;
+                        end
+                        Csrrs: begin
+                            _regfile_wdata <= _zicsr_rdata;
+                            _zicsr_wdata <= _zicsr_rdata | _regfile_rdata1;
+                            _zicsr_write <= 1;
+                        end
+                        Csrrc: begin
+                             _regfile_wdata <= _zicsr_rdata;
+                             _zicsr_wdata <= _zicsr_rdata & ~_regfile_rdata1;
+                             _zicsr_write <= 1;
+                        end
+                        Csrrsi: begin
+                             _regfile_wdata <= _zicsr_rdata;
+                             _zicsr_wdata <= _zicsr_rdata | {27'b0, _decoder_rs1};
+                             _zicsr_write <= 1;
+                        end
+                        Csrrci: begin
+                             _regfile_wdata <= _zicsr_rdata;
+                             _zicsr_wdata <= _zicsr_rdata & ~{27'b0, _decoder_rs1};
+                             _zicsr_write <= 1;
+                        end
                     endcase
                 end
             endcase

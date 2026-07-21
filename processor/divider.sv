@@ -1,4 +1,4 @@
-/* 
+/*
 
     July 13th, 2026
 
@@ -41,7 +41,7 @@ module divider (
     always_ff @(posedge clk) begin
         if (rst) begin
             state <= IDLE;
-            done <= 1'b0;
+            done <= 1'b1;
             count <= 5'b0;
             remres <= 64'b0;
         end
@@ -51,7 +51,7 @@ module divider (
 
                     if (!b) begin
                         state <= DONE;
-                    end else if (a == 32'h80000000 && b == 32'hffffffff && !divu) begin 
+                    end else if (a == 32'h80000000 && b == 32'hffffffff && !divu) begin
                         state <= DONE;
                     end else if (divu && b[31]) begin
                         state <= DONE;
@@ -60,7 +60,7 @@ module divider (
                         state <= RUN;
                     end
                 end
-                
+
                 remres <= {32'b0, a_abs};
                 count <= 0;
 
@@ -72,20 +72,20 @@ module divider (
 
                 shifted = remres << 1;
 
-                
+
                 if (shifted[63] == 0) begin
                     new_rem = shifted[63:32] - b_abs;
                 end else begin
                     new_rem = shifted[63:32] + b_abs;
                 end
-                
+
                 if (count == 5'b11111)
                     state <= DONE;
-                
+
                 new_qb = new_rem[31] ? 1'b0 : 1'b1;
                 count <= count + 1;
                 remres <= {new_rem, shifted[31:1], new_qb};
-                
+
             end
             DONE: begin
                 state <= IDLE;
@@ -97,7 +97,7 @@ module divider (
                 end else if (a == 32'h80000000 && b == 32'hffffffff && !divu) begin
                     result <= 32'h80000000;
                     rem <= 32'b0;
-                end else if (divu && b[31]) begin 
+                end else if (divu && b[31]) begin
                     if (a >= b) begin
                         result <= 32'b1;
                         rem <= a - b;
@@ -112,9 +112,9 @@ module divider (
                     else
                         rem <= a[31] && !divu ? ~remres[63:32] + 1 : remres[63:32];
                 end
-                
+
             end
-                
+
         default: begin end
         endcase
     end
