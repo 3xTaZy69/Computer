@@ -14,7 +14,9 @@
 import enums::*;
 
 
-module control_unit (
+module control_unit #(
+    parameter msipaddr = 32'hFFFFFFFC
+) (
     input logic clk, rst, mtip
 );
 
@@ -63,9 +65,10 @@ module control_unit (
 
 
     // zicsr module
-    logic _zicsr_write, _zicsr_clk, _zicsr_rst;
-    logic [31:0] _zicsr_wdata, _zicsr_rdata, _zicsr_mtvecv, _zicsr_mepcv;
+    logic _zicsr_write, _zicsr_clk, _zicsr_rst, _zicsr_mpcmcamstwe;
+    logic [31:0] _zicsr_wdata, _zicsr_rdata, _zicsr_mtvecv, _zicsr_mepcv, _zicsr_miev, _zicsr_mstatusv;
     logic [11:0] _zicsr_addr;
+    logic [95:0] _zicsr_mpcmcamstw;
     // configurable clk and rst for zicsr module
     assign _zicsr_clk = clk;
     assign _zicsr_rst = rst;
@@ -78,7 +81,11 @@ module control_unit (
         .addr(_zicsr_addr),
         .rdata(_zicsr_rdata),
         .mtvecv(_zicsr_mtvecv),
-        .mepcv(_zicsr_mepcv)
+        .mepcv(_zicsr_mepcv),
+        .mepcausestatusw(_zicsr_mpcmcamstw),
+        .mpcmcamstwe(_zicsr_mpcmcamstwe),
+        .miev(_zicsr_miev),
+        .mstatusv(_zicsr_mstatusv)
     );
 
 
@@ -173,6 +180,25 @@ module control_unit (
     assign _alu_f3 = _decoder_f3;
     assign _alU_f7 = _decoder_f7;
 
+    logic [31:0] mstatus_next;
+
+    always_comb begin
+        mstatus_next = {_zicsr_mstatusv[31:7], _zicsr_mstatusv[3], _zicsr_mstatusv[5:4], 1'b0, _zicsr_mstatusv[2:0]};
+        if ( msip ) begin
+            _zicsr_mpcmcamstw = {
+                pc_next,
+                32'h80000003,
+                mstatus_next
+            };
+        end else if ( mtip ) begin
+            _zicsr_mpcmcamstw = {
+                pc_next,
+                32'h80000007,
+                mstatus_next
+            };
+        end
+    end
+
     // test FSM
     always_ff @(posedge clk) begin
         if ( rst ) begin
@@ -190,12 +216,19 @@ module control_unit (
             _mem_addr <= 0;
 
             _zicsr_write <= 0;
+            _zicsr_mpcmcamstwe <= 0;
         end else if ( !stall ) begin
             case (state)
                 IF: begin
                     state <= ID;
 
-                    pc <= pc_next;
+                    if (!_zicsr_mpcmcamstwe) begin
+                        pc <= pc_next;
+                    end else begin
+                        pc <= _zicsr_mtvecv;
+                        _zicsr_mpcmcamstwe <= 0;
+                    end
+
 
                     // help for IF to get its instruction
                     _mem_load <= 1;
@@ -205,6 +238,7 @@ module control_unit (
 
                     _regfile_write <= 0;
                     _mem_write <= 0;
+
 
                 end
                 ID: begin
@@ -286,15 +320,20 @@ module control_unit (
                         _mem_f3 <= _decoder_f3;
                         _mem_load <= 1;
                     end else if (_decoder_instr == Store) begin
-                        _mem_addr <= _alu_result;
-                        _mem_f3 <= _decoder_f3;
-                        _mem_write <= 1;
+                        if (_mem_addr == msipaddr) begin
+                            // software interrupt enable
+                            if (_zicsr_miev[3]) begin
+                                msip <= 1;
+                            end
+                        end else begin
+                            _mem_addr <= _alu_result;
+                            _mem_f3 <= _decoder_f3;
+                            _mem_write <= 1;
+                        end
+
                     end
 
-                end
-                WB: begin
-                    state <= IF;
-
+                    // pc calculation for future use in WB and trap handeling
                     case ( _decoder_instr )
                         Branch: pc_next <= do_branch ? pc + _decoder_imm : p4;
                         Jal, Jalr: pc_next <= _alu_result;
@@ -302,7 +341,17 @@ module control_unit (
                         default: pc_next <= p4;
                     endcase
 
+                end
+                WB: begin
+                    state <= IF;
+
                     _regfile_write <= do_rwrite;
+
+                    // msip higher
+                    if ( msip || mtip ) begin
+                        _zicsr_mpcmcamstwe <= 1;
+                    end
+
 
                     case ( _decoder_instr )
                         Load: begin

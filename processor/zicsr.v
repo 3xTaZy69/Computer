@@ -1,7 +1,7 @@
 /*
 
     zicsr.v
-    July 15th, 2026 -- July 20th, 2026
+    July 15th, 2026 -- July 21th, 2026
 
     register file for zicsr extension.
     no instruction processing!
@@ -9,11 +9,12 @@
 */
 
 module zicsr (
-    input wire rst, clk, write,
+    input wire rst, clk, write, mpcmcamstwe,
     input wire [31:0] wdata,
+    input wire [95:0] mepcausestatusw,
     input wire [11:0] addr,
     output reg [31:0] rdata,
-    output wire [31:0] mtvecv, mepcv
+    output wire [31:0] mtvecv, mepcv, miev, mstatusv
 );
     //         0x300    0x301  0x304 0x305  0x340     0x341  0x342   0x343  0x344
     reg [31:0] mstatus, misa,  mie,  mtvec, mscratch, mepc,  mcause, mtval, mip;
@@ -42,7 +43,7 @@ module zicsr (
 
         case (addr)
 
-            2'h300: rdata = mstatus;
+            12'h300: rdata = mstatus;
             12'h301: rdata = misa;
             12'h304: rdata = mie;
             12'h305: rdata = mtvec;
@@ -58,8 +59,12 @@ module zicsr (
     end
 
     // register write(using the same address)
-    always @(negedge clk) begin
-        if (!rst && write && wdata != 0) begin
+    always @(posedge clk) begin
+        if ( !rst && mpcmcamstwe ) begin
+            mepc <= mepcausestatusw[95:64];
+            mcause <= mepcausestatusw[63:32];
+            mstatus <= mepcausestatusw[31:0];
+        end else if (!rst && write ) begin
 
             // little copypaste from reset
             case (addr)
@@ -83,6 +88,8 @@ module zicsr (
 
     // additional mtvec reading output for faster interrupts
     assign mtvecv = mtvec;
-    assign mepcv = mepcv;
+    assign mepcv = mepc;
+    assign miev = mie;
+    assign mstatusv = mstatus;
 
 endmodule
